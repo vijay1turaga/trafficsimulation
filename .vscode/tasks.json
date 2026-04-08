@@ -1,0 +1,92 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run SUMO Simulation",
+            "type": "shell",
+            "command": "python",
+            "args": ["python_controller/traci_controller.py"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run NS-3 Simulation",
+            "type": "shell",
+            "command": "./waf",
+            "args": ["--run", "vanet_simulation"],
+            "options": {
+                "cwd": "${workspaceFolder}/ns3_scripts"
+            },
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Data Fusion",
+            "type": "shell",
+            "command": "python",
+            "args": ["python_controller/data_fusion.py"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Train Model",
+            "type": "shell",
+            "command": "python",
+            "args": ["python_controller/bilstm_model.py"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Evaluate Model",
+            "type": "shell",
+            "command": "python",
+            "args": ["python_controller/evaluate_model.py"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Plot Graphs",
+            "type": "shell",
+            "command": "python",
+            "args": ["visualization/plot_graphs.py"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        }
+    ]
+}

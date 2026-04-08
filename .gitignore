@@ -1,0 +1,8 @@
+*.pyc
+__pycache__/
+*.log
+logs/
+models/
+data/*.csv
+!data/sample_dataset.csv
+.vscode/settings.json
