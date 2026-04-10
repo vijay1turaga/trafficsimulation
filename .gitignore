@@ -5,4 +5,4 @@ logs/
 models/
 data/*.csv
 !data/sample_dataset.csv
-.vscode/settings.json
+.vscode/settings.json&#10;live_plots/&#10;**/*.npy&#10;*.h5&#10;visualization/*.png

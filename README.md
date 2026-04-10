@@ -24,13 +24,20 @@ This project develops a proactive traffic congestion prediction system using SUM
 2. Install NS-3: Follow https://www.nsnam.org/docs/release/3.35/tutorial/html/getting-started.html
 3. Install Python dependencies: `pip install -r requirements.txt`
 
+## 🚀 New: Project Dashboard
+Open `dashboard.html` in your browser for a complete visual overview of the project – live plots, model results, metrics, and controls all in one place!
+
+```
+start dashboard.html
+```
+
 ## Usage
 1. Configure SUMO network in `sumo_config/`
-2. Run NS-3 simulation: `./waf --run vanet_simulation` in `ns3_scripts/`
-3. Run Python controller: `python python_controller/traci_controller.py`
-4. Train model: `python python_controller/train_model.py`
-5. Predict: `python python_controller/predict.py`
-6. Visualize: `python visualization/plot_graphs.py`
+2. Run the hybrid ingestion pipeline: `python python_controller/hybrid_bridge.py`
+3. Train the Bi-LSTM model: `python python_controller/train_model.py`
+4. Run real-time prediction: `python python_controller/predict.py`
+5. Optionally run the live simulator with alerts: `python live_simulation.py`
+6. Visualize results: `python visualization/plot_graphs.py`
 
 ## Project Structure
 - `sumo_config/`: SUMO network, routes, and configuration files
