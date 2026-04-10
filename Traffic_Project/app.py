@@ -1,83 +1,152 @@
 import streamlit as st
 import traci
-import pandas as pd
-import time
+import numpy as np
+import tensorflow as tf
+import plotly.graph_objects as go
 
+# ---------------------------
+# CONFIG
+# ---------------------------
 SUMO_CONFIG = "sumo_config/simple.sumocfg"
 
-def start_sumo():
+# Load model
+model = tf.keras.models.load_model("traffic_model.h5")
+
+st.set_page_config(layout="wide")
+st.title("🚦 Smart Traffic AI Dashboard (SUMO + Model)")
+
+if st.button("▶ Start Simulation"):
+
     traci.start([
         "sumo-gui",
         "-c", SUMO_CONFIG,
         "--start"
     ])
 
-st.set_page_config(layout="wide")
+    key_steps = []
+    last_status = ""
 
-st.title("🚦 Live Traffic Simulation (SUMO + AI)")
+    correct = 0
+    total = 0
 
-if st.button("▶ Start Simulation"):
+    for step in range(200):
 
-    start_sumo()
+        traci.simulationStep()
 
-    col1, col2, col3 = st.columns(3)
+        veh_ids = traci.vehicle.getIDList()
 
-    step_box = st.empty()
-    vehicle_box = col1.empty()
-    speed_box = col2.empty()
-    status_box = col3.empty()
-    explanation = st.empty()
+        speeds = [traci.vehicle.getSpeed(v) for v in veh_ids]
+        accs = [traci.vehicle.getAcceleration(v) for v in veh_ids]
 
-    # ✅ GRAPH INIT (IMPORTANT)
-    chart = st.line_chart(pd.DataFrame({
-        "Vehicles": [],
-        "Speed": []
-    }))
+        avg_speed = np.mean(speeds) if speeds else 0
+        avg_acc = np.mean(accs) if accs else 0
+        veh_count = len(veh_ids)
 
-    for step in range(100):
+        # ---------------------------
+        # REALISTIC FEATURES
+        # ---------------------------
+        pdr = max(0, min(1, avg_speed / 5))
+        latency = max(0, min(1, veh_count / 100))
 
-        try:
-            traci.simulationStep()
+        # ---------------------------
+        # MODEL INPUT (MATCH DATASET)
+        # ---------------------------
+        input_data = np.array([[avg_speed, avg_acc, pdr, latency]])
 
-            vehicles = traci.vehicle.getIDList()
+        prediction = model.predict(input_data, verbose=0)[0][0]
 
-            speed = 50
-            if len(vehicles) > 0:
-                speed = sum([traci.vehicle.getSpeed(v) for v in vehicles]) / len(vehicles)
+        # ---------------------------
+        # STATUS
+        # ---------------------------
+        if prediction > 0.5:
+            status = "High Congestion"
+        elif prediction > 0.3:
+            status = "Medium Traffic"
+        else:
+            status = "Smooth Traffic"
 
-            density = len(vehicles)
+        # ---------------------------
+        # GROUND TRUTH (for accuracy)
+        # ---------------------------
+        if avg_speed < 2 and veh_count > 80:
+            actual = 1
+        else:
+            actual = 0
 
-            # UI
-            step_box.markdown(f"### Step: {step}")
-            vehicle_box.metric("🚗 Vehicles", density)
-            speed_box.metric("⚡ Avg Speed", round(speed, 2))
+        pred_label = 1 if prediction > 0.5 else 0
 
-            # ✅ CORRECT CONGESTION LOGIC
-            if density > 50 and speed < 5:
-                status_box.error("🚨 High Congestion")
-                explanation.markdown("Heavy traffic: too many vehicles and very low speed.")
+        if pred_label == actual:
+            correct += 1
 
-            elif density > 30 and speed < 8:
-                status_box.warning("⚠️ Medium Traffic")
-                explanation.markdown("Moderate traffic: vehicles increasing and speed reducing.")
+        total += 1
+        accuracy = correct / total
 
-            else:
-                status_box.success("✅ Smooth Traffic")
-                explanation.markdown("Traffic is smooth: low vehicles and good speed.")
+        # ---------------------------
+        # STORE ONLY CHANGE POINTS
+        # ---------------------------
+        if status != last_status:
+            key_steps.append({
+                "step": step,
+                "speed": round(avg_speed, 2),
+                "pdr": round(pdr, 2),
+                "latency": round(latency, 2),
+                "status": status,
+                "accuracy": accuracy
+            })
+            last_status = status
 
-            # ✅ GRAPH UPDATE (FIXED METHOD)
-            chart.add_rows(pd.DataFrame({
-                "Vehicles": [density],
-                "Speed": [speed]
-            }))
-
-            time.sleep(0.05)
-
-        except:
-            st.warning("Simulation stopped")
+        if len(key_steps) >= 4:
             break
 
-    if traci.isLoaded():
-        traci.close()
+    traci.close()
 
-    st.success("Simulation Completed")
+    # =========================
+    # SHOW RESULTS (SHORT)
+    # =========================
+    st.subheader("📊 Key Traffic Changes")
+
+    for k in key_steps:
+        if k["status"] == "High Congestion":
+            st.error(f"Step {k['step']} → 🚨 {k['status']}")
+        elif k["status"] == "Medium Traffic":
+            st.warning(f"Step {k['step']} → ⚠️ {k['status']}")
+        else:
+            st.success(f"Step {k['step']} → ✅ {k['status']}")
+
+    # =========================
+    # BAR GRAPH
+    # =========================
+    st.subheader("📊 Performance Metrics")
+
+    labels = [f"S{k['step']}" for k in key_steps]
+
+    fig = go.Figure(data=[
+        go.Bar(name="Speed", x=labels, y=[k["speed"] for k in key_steps]),
+        go.Bar(name="PDR", x=labels, y=[k["pdr"] for k in key_steps]),
+        go.Bar(name="Latency", x=labels, y=[k["latency"] for k in key_steps]),
+    ])
+
+    fig.update_layout(barmode='group', template="plotly_dark")
+    st.plotly_chart(fig, use_container_width=True)
+
+    # =========================
+    # ACCURACY
+    # =========================
+    st.subheader("🎯 Prediction Accuracy")
+
+    for k in key_steps:
+        st.write(f"Step {k['step']} → {k['accuracy']*100:.2f}%")
+
+    # =========================
+    # FINAL EXPLANATION
+    # =========================
+    st.subheader("🧠 AI Explanation")
+
+    final = key_steps[-1]
+
+    if final["status"] == "High Congestion":
+        st.error("🚨 Heavy traffic due to low speed and high vehicle density.")
+    elif final["status"] == "Medium Traffic":
+        st.warning("⚠️ Moderate traffic with reduced speed.")
+    else:
+        st.success("✅ Traffic is smooth with good speed and low density.")
